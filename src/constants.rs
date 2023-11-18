@@ -12,7 +12,10 @@ pub struct SucessfulOperationStrings;
 
 impl SucessfulOperationStrings {
     pub fn sucessful_insert_operation(key: &str, value: &str) -> String {
-        format!("Sucessfully set the key {} with the value {} in the database!", key, value)
+        format!(
+            "Sucessfully set the key {} with the value {} in the database!",
+            key, value
+        )
     }
     pub fn sucessful_delete_operation(key: &str) -> String {
         format!("Sucessfully deleted the entry for {}!", key)

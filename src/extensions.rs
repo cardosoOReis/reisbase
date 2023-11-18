@@ -1,16 +1,18 @@
-pub trait OptionIfPresent<T> {
-    fn if_present<F>(self, f: F)
+pub trait OptionFromPredicate<T> {
+    fn from_predicate<F>(predicate: bool, f: F) -> Option<T>
     where
-        F: FnOnce(T);
+        F: FnOnce(bool) -> Option<T>;
 }
 
-impl<T> OptionIfPresent<T> for Option<T> {
-    fn if_present<F>(self, f: F)
+impl<T> OptionFromPredicate<T> for Option<T> {
+    fn from_predicate<F>(predicate: bool, f: F) -> Option<T>
     where
-        F: FnOnce(T),
+        F: FnOnce(bool) -> Option<T>,
     {
-        if let Some(value) = self {
-            f(value);
+        if predicate {
+            f(true)
+        } else {
+            None
         }
     }
 }

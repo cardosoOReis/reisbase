@@ -2,7 +2,8 @@ use std::env;
 use std::io;
 use strum::IntoEnumIterator;
 
-use crate::controller::ReisbaseActions;
+use crate::actions::ReisbaseActions;
+use crate::extensions::OptionFromPredicate;
 use crate::{
     failures::{CustomFailureOperation, CustomReisActionWarning, CustomReisIOFailure},
     interface::Interface,
@@ -35,32 +36,13 @@ fn handle_result_interface_execute(result: Result<CustomSucessOperation, CustomF
 }
 
 fn handle_sucess_operation(sucess: &CustomSucessOperation) {
-    match sucess {
-        CustomSucessOperation::SucessInsertOperation(message)
-        | CustomSucessOperation::SucessGetOperation(message)
-        | CustomSucessOperation::SucessPutOperation(message)
-        | CustomSucessOperation::SucessDeleteOperation(message)
-        | CustomSucessOperation::SucessGetAllOperation(message)
-        | CustomSucessOperation::SucessClearOperation(message) => println!("{}", message),
-    }
+    println!("{}", sucess.message());
 }
 
 fn handle_failure_operation(failure: &CustomReisIOFailure) {
-    match failure {
-        CustomReisIOFailure::CorruptedDatabaseFailure(error_message)
-        | CustomReisIOFailure::DatabaseNotFoundFailure(error_message)
-        | CustomReisIOFailure::DatabaseTooLargeError(error_message)
-        | CustomReisIOFailure::DefaultReisFailure(error_message)
-        | CustomReisIOFailure::InvalidDatabaseNameFailure(error_message)
-        | CustomReisIOFailure::InvalidInputFailure(error_message)
-        | CustomReisIOFailure::InvalidPlatformOperationFailure(error_message)
-        | CustomReisIOFailure::PermissionDeniedForDatabase(error_message)
-        | CustomReisIOFailure::OutOfSpaceFailure(error_message)
-        | CustomReisIOFailure::UnknownOperationFailure(error_message) => {
-            println!("{}", error_message);
-            error_message.print_error()
-        }
-    }
+    let error_message = failure.error_message();
+    println!("{}", error_message);
+    error_message.print_error();
 }
 
 fn handle_warning_operation(warning: &CustomReisActionWarning) {
@@ -92,15 +74,12 @@ fn handle_warning_operation(warning: &CustomReisActionWarning) {
             }
         }
         CustomReisActionWarning::EntryDoesntExistsWarning { key, value } => {
-            if let Some(value) = value {
-                println!("The entry {} does not exists! You can create a new one with the command: set {} {}", key, key, value)
-            } else {
-                println!("The entry {} does not exists! You can create a new one with the command: set {} value", key, key)
-            }
+            let value = value.as_deref().unwrap_or("value");
+            println!("The entry {} does not exists! You can create a new one with the command: set {} {}", key, key, value);
         }
         CustomReisActionWarning::RequiredArgumentsNotSpecified { operation } => {
             if let ReisbaseActions::Clear { arguments: _ } = operation {
-                match get_user_input("This action is permanent, and will clear all your data! Are you sure you want to continue? (Y/n)") {
+                match get_user_input("This action is permanent, and will clear all your data. Are you sure you want to continue? (Y/n)") {
                     Ok(input) => {
                         if parse_user_input_to_bool(&input) {
                             handle_result_interface_execute(Interface:: execute(
@@ -134,24 +113,26 @@ fn parse_user_input_to_bool(input: &str) -> bool {
 }
 
 fn get_requested_operation() -> (Option<String>, Option<String>, Option<String>, Vec<String>) {
-    for reisbase_action in ReisbaseActions::iter() {
-        let args = &mut env::args().skip(1);
-        let action = args.next();
-        let name = reisbase_action.name();
-        if let Some(action) = action {
-            if action == name.0 || action == name.1 {
-                let mut key: Option<String> = None;
-                let mut value: Option<String> = None;
-                if reisbase_action.has_key() {
-                    key = args.next();
-                }
-                if reisbase_action.has_value() {
-                    value = args.next();
-                }
-                let arguments: Vec<String> = args.collect();
-                return (Some(action), key, value, arguments);
-            }
-        }
-    }
-    (env::args().nth(1), None, None, Vec::new())
+    let mut args = env::args().skip(1);
+    let action = args.next();
+    ReisbaseActions::iter()
+        .find(|reisbase_action| has_same_name(action.as_deref(), reisbase_action))
+        .map(|reisbase_action| parse_operation(&reisbase_action, action.as_deref(), args))
+        .unwrap_or_else(|| (action, None, None, Vec::new()))
+}
+
+fn has_same_name(action: Option<&str>, reisbase_action: &ReisbaseActions) -> bool {
+    let name = reisbase_action.name();
+    action.map(|a| a == name.0 || a == name.1).unwrap_or(false)
+}
+
+fn parse_operation(
+    reisbase_action: &ReisbaseActions,
+    action: Option<&str>,
+    mut args: impl Iterator<Item = String>,
+) -> (Option<String>, Option<String>, Option<String>, Vec<String>) {
+    let key = Option::from_predicate(reisbase_action.has_key(), |_| args.next());
+    let value = Option::from_predicate(reisbase_action.has_value(), |_| args.next());
+    let args = args.collect::<Vec<String>>();
+    (action.map(|s| s.to_owned()), key, value, args)
 }

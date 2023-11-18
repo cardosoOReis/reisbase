@@ -1,5 +1,6 @@
-use crate::controller::ReisbaseActions;
 use std::io::Error;
+
+use crate::actions::ReisbaseActions;
 
 #[derive(Debug)]
 pub enum CustomReisIOFailure {
@@ -13,6 +14,23 @@ pub enum CustomReisIOFailure {
     PermissionDeniedForDatabase(CustomErrorMessage),
     OutOfSpaceFailure(CustomErrorMessage),
     UnknownOperationFailure(CustomErrorMessage),
+}
+
+impl CustomReisIOFailure {
+    pub fn error_message(&self) -> &CustomErrorMessage {
+        match self {
+            CustomReisIOFailure::CorruptedDatabaseFailure(error_message)
+            | CustomReisIOFailure::DatabaseNotFoundFailure(error_message)
+            | CustomReisIOFailure::DatabaseTooLargeError(error_message)
+            | CustomReisIOFailure::DefaultReisFailure(error_message)
+            | CustomReisIOFailure::InvalidDatabaseNameFailure(error_message)
+            | CustomReisIOFailure::InvalidInputFailure(error_message)
+            | CustomReisIOFailure::InvalidPlatformOperationFailure(error_message)
+            | CustomReisIOFailure::PermissionDeniedForDatabase(error_message)
+            | CustomReisIOFailure::OutOfSpaceFailure(error_message)
+            | CustomReisIOFailure::UnknownOperationFailure(error_message) => error_message,
+        }
+    }
 }
 
 #[derive(Debug)]
