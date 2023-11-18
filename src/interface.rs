@@ -4,6 +4,7 @@ use crate::{
     controller::Controller,
     error_handler::ErrorHandler,
     failures::{CustomFailureOperation, CustomReisIOFailure},
+    operation::Operation,
     sucess::CustomSucessOperation,
 };
 
@@ -23,24 +24,24 @@ impl Interface {
     }
 
     pub fn execute(
-        action: Option<String>,
-        key: Option<String>,
-        value: Option<String>,
-        arguments: Vec<String>,
+        operation: Option<Operation>,
     ) -> Result<CustomSucessOperation, CustomFailureOperation> {
-        action
+        operation
             .ok_or_else(build_empty_action_error)
-            .and_then(|action| create_interface_and_map_error(&action, key, value, arguments))
+            .and_then(create_interface_and_map_error)
             .and_then(execute_action)
     }
 }
 fn create_interface_and_map_error(
-    action: &str,
-    key: Option<String>,
-    value: Option<String>,
-    arguments: Vec<String>,
+    operation: Operation,
 ) -> Result<Interface, CustomFailureOperation> {
-    Interface::new(action, key, value, arguments).map_err(CustomFailureOperation::Failure)
+    Interface::new(
+        &operation.action,
+        operation.key,
+        operation.value,
+        operation.arguments,
+    )
+    .map_err(CustomFailureOperation::Failure)
 }
 
 fn build_empty_action_error() -> CustomFailureOperation {

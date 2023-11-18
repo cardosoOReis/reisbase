@@ -12,7 +12,7 @@ impl ErrorHandler {
                 CustomReisIOFailure::CorruptedDatabaseFailure(CustomErrorMessage::new(
                     String::from(
                         "Invalid data was read from your database! It seems it may be corrupt, or an invalid value was written to it externally!"
-                    ), 
+                    ),
                     error
                 ))
             },

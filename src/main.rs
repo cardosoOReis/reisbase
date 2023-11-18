@@ -8,6 +8,7 @@ pub mod error_handler;
 pub mod extensions;
 pub mod failures;
 pub mod interface;
+pub mod operation;
 pub mod reisbase;
 pub mod sucess;
 pub mod terminal_communication;
