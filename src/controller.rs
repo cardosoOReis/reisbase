@@ -3,8 +3,10 @@ use std::io::{Error, ErrorKind};
 use strum_macros::EnumIter;
 
 use crate::{
-    constants::{DatabaseStringConstants, SucessfulOperationConstants},
+    arguments::ReisbaseActionsArguments,
+    constants::{DatabaseStringConstants, SucessfulOperationStrings},
     error_handler::ErrorHandler,
+    extensions::OptionIfPresent,
     failures::{CustomReisActionWarning, CustomReisIOFailure},
     reisbase::Reisbase,
     sucess::CustomSucessOperation,
@@ -21,9 +23,12 @@ impl Controller {
         action: &str,
         key: Option<String>,
         value: Option<String>,
-        arguments: Option<Vec<String>>,
+        arguments: Vec<String>,
     ) -> Result<Controller, CustomReisIOFailure> {
-        let arguments = reisbase_actions_arguments_from_string(arguments);
+        let arguments = arguments
+            .iter()
+            .filter_map(|argument| ReisbaseActionsArguments::new(argument))
+            .collect();
         match match_action(action, key, value, arguments) {
             Err(error) => Err(error),
             Ok(option_action) => match option_action {
@@ -47,7 +52,7 @@ fn match_action(
     action: &str,
     key: Option<String>,
     value: Option<String>,
-    arguments: Option<Vec<ReisbaseActionsArguments>>,
+    arguments: Vec<ReisbaseActionsArguments>,
 ) -> Result<Option<ReisbaseActions>, CustomReisIOFailure> {
     match action {
         "set" | "s" => {
@@ -109,26 +114,26 @@ pub enum ReisbaseActions {
     Set {
         key: String,
         value: String,
-        arguments: Option<Vec<ReisbaseActionsArguments>>,
+        arguments: Vec<ReisbaseActionsArguments>,
     },
     Get {
         key: String,
-        arguments: Option<Vec<ReisbaseActionsArguments>>,
+        arguments: Vec<ReisbaseActionsArguments>,
     },
     Put {
         key: String,
         value: String,
-        arguments: Option<Vec<ReisbaseActionsArguments>>,
+        arguments: Vec<ReisbaseActionsArguments>,
     },
     Del {
         key: String,
-        arguments: Option<Vec<ReisbaseActionsArguments>>,
+        arguments: Vec<ReisbaseActionsArguments>,
     },
     GetAll {
-        arguments: Option<Vec<ReisbaseActionsArguments>>,
+        arguments: Vec<ReisbaseActionsArguments>,
     },
     Clear {
-        arguments: Option<Vec<ReisbaseActionsArguments>>,
+        arguments: Vec<ReisbaseActionsArguments>,
     },
 }
 
@@ -141,26 +146,25 @@ impl ReisbaseActions {
                 key,
                 value: new_value,
                 arguments: _,
-            } => {
-                if let Some(old_value) = controller.database.get(key) {
-                    Err(CustomReisActionWarning::EntryAlreadyExistsWarning {
-                        key: key.to_string(),
-                        old_value,
-                        new_value: new_value.to_string(),
-                    })
-                } else {
+            } => match controller.database.get(key) {
+                Some(old_value) => Err(CustomReisActionWarning::EntryAlreadyExistsWarning {
+                    key: key.to_string(),
+                    old_value,
+                    new_value: new_value.to_string(),
+                }),
+                None => {
                     controller.database.insert(key, new_value);
                     Ok(CustomSucessOperation::SucessInsertOperation(
-                        SucessfulOperationConstants::sucessful_insert_operation(key, new_value),
+                        SucessfulOperationStrings::sucessful_insert_operation(key, new_value),
                     ))
                 }
-            }
+            },
             ReisbaseActions::Get { key, arguments } => {
                 if let Some(value) = controller.database.get(key) {
-                    if has_specified_argument(ReisbaseActionsArguments::Clipboard, arguments) {
-                        if let Ok(mut clipboard) = Clipboard::new() {
+                    if has_specified_argument(&ReisbaseActionsArguments::Clipboard, arguments) {
+                        Clipboard::new().ok().if_present(|mut clipboard| {
                             let _ = clipboard.set_text(&value);
-                        }
+                        });
                     }
                     Ok(CustomSucessOperation::SucessGetOperation(value))
                 } else {
@@ -183,7 +187,7 @@ impl ReisbaseActions {
                 } else {
                     controller.database.insert(key, value);
                     Ok(CustomSucessOperation::SucessPutOperation(
-                        SucessfulOperationConstants::sucessful_insert_operation(key, value),
+                        SucessfulOperationStrings::sucessful_insert_operation(key, value),
                     ))
                 }
             }
@@ -191,7 +195,7 @@ impl ReisbaseActions {
                 if controller.database.get(key).is_some() {
                     controller.database.delete(key);
                     Ok(CustomSucessOperation::SucessDeleteOperation(
-                        SucessfulOperationConstants::sucessful_delete_operation(key),
+                        SucessfulOperationStrings::sucessful_delete_operation(key),
                     ))
                 } else {
                     Err(CustomReisActionWarning::EntryDoesntExistsWarning {
@@ -211,15 +215,15 @@ impl ReisbaseActions {
                 if controller.database.is_empty() {
                     return Err(CustomReisActionWarning::EmptyDatabaseWarning);
                 }
-                if has_specified_argument(ReisbaseActionsArguments::Force, arguments) {
+                if has_specified_argument(&ReisbaseActionsArguments::Force, arguments) {
                     controller.database.clear();
                     Ok(CustomSucessOperation::SucessClearOperation(
-                        SucessfulOperationConstants::sucessful_clear_operation(),
+                        SucessfulOperationStrings::sucessful_clear_operation(),
                     ))
                 } else {
                     Err(CustomReisActionWarning::RequiredArgumentsNotSpecified {
                         operation: ReisbaseActions::Clear {
-                            arguments: Some(vec![ReisbaseActionsArguments::Force]),
+                            arguments: vec![ReisbaseActionsArguments::Force],
                         },
                     })
                 }
@@ -301,62 +305,10 @@ impl ReisbaseActions {
     }
 }
 fn has_specified_argument(
-    specified_argument: ReisbaseActionsArguments,
-    arguments: &Option<Vec<ReisbaseActionsArguments>>,
+    specified_argument: &ReisbaseActionsArguments,
+    arguments: &[ReisbaseActionsArguments],
 ) -> bool {
-    match arguments {
-        None => false,
-        Some(arguments) => {
-            arguments
-                .iter()
-                .filter(|argument| {
-                    std::mem::discriminant(argument.to_owned())
-                        == std::mem::discriminant(&specified_argument)
-                })
-                .count()
-                > 0
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum ReisbaseActionsArguments {
-    Force,
-    Help,
-    Clipboard,
-    Description(String),
-}
-
-impl std::fmt::Display for ReisbaseActionsArguments {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ReisbaseActionsArguments::Force => write!(f, "-f (Force)"),
-            ReisbaseActionsArguments::Help => write!(f, "-h (Help)"),
-            ReisbaseActionsArguments::Clipboard => write!(f, "-c (Copy to Clipboard)"),
-            ReisbaseActionsArguments::Description(_) => write!(f, "-d (Description)"),
-        }
-    }
-}
-
-fn reisbase_actions_arguments_from_string(
-    actions: Option<Vec<String>>,
-) -> Option<Vec<ReisbaseActionsArguments>> {
-    match actions {
-        Some(actions) => {
-            let mut arguments: Vec<ReisbaseActionsArguments> = Vec::new();
-            for action in actions {
-                if action == "-f" {
-                    arguments.push(ReisbaseActionsArguments::Force)
-                }
-                if action == "-h" {
-                    arguments.push(ReisbaseActionsArguments::Help)
-                }
-                if action == "-c" {
-                    arguments.push(ReisbaseActionsArguments::Clipboard)
-                }
-            }
-            Some(arguments)
-        }
-        None => None,
-    }
+    arguments
+        .iter()
+        .any(|argument| argument == specified_argument)
 }

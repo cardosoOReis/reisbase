@@ -8,6 +8,8 @@ pub mod constants;
 pub mod interface;
 pub mod sucess;
 pub mod terminal_communication;
+pub mod arguments;
+pub mod extensions;
 
 fn main() {
     TerminalCommunication::execute()

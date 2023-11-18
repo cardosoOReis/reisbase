@@ -17,13 +17,9 @@ impl Interface {
         action: &str,
         key: Option<String>,
         value: Option<String>,
-        arguments: Option<Vec<String>>,
+        arguments: Vec<String>,
     ) -> Result<Interface, CustomReisIOFailure> {
-        let controller = Controller::new(action, key, value, arguments);
-        match controller {
-            Ok(controller) => Ok(Interface { controller }),
-            Err(error) => Err(error),
-        }
+        Controller::new(action, key, value, arguments).map(|controller| Interface { controller })
     }
 
     pub fn execute(
@@ -32,24 +28,33 @@ impl Interface {
         value: Option<String>,
         arguments: Vec<String>,
     ) -> Result<CustomSucessOperation, CustomFailureOperation> {
-        match action {
-            Some(action) => {
-                match Self::new(&action, key, value, Some(arguments)) {
-                    Ok(mut interface) => match interface.controller.execute() {
-                        Ok(result) => Ok(result),
-                        Err(warning) => Err(CustomFailureOperation::Warning(warning)),
-                    },
-                    Err(error) => Err(CustomFailureOperation::Failure(error)),
-                }
-            }
-            None => {
-                    Err(CustomFailureOperation::Failure(
-                        ErrorHandler::handle_io_error(Error::new(
-                            ErrorKind::InvalidInput,
-                            "Operation should contain an action!",
-                        )),
-                    ))
-                }
-        }
+        action
+            .ok_or_else(build_empty_action_error)
+            .and_then(|action| create_interface_and_map_error(&action, key, value, arguments))
+            .and_then(execute_action)
     }
+}
+fn create_interface_and_map_error(
+    action: &str,
+    key: Option<String>,
+    value: Option<String>,
+    arguments: Vec<String>,
+) -> Result<Interface, CustomFailureOperation> {
+    Interface::new(action, key, value, arguments).map_err(CustomFailureOperation::Failure)
+}
+
+fn build_empty_action_error() -> CustomFailureOperation {
+    CustomFailureOperation::Failure(ErrorHandler::handle_io_error(Error::new(
+        ErrorKind::InvalidInput,
+        "Operation should contain an action!",
+    )))
+}
+
+fn execute_action(
+    mut interface: Interface,
+) -> Result<CustomSucessOperation, CustomFailureOperation> {
+    interface
+        .controller
+        .execute()
+        .map_err(CustomFailureOperation::Warning)
 }

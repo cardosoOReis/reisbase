@@ -8,9 +8,9 @@ impl DatabaseStringConstants {
     pub const ENTRIES_SEPARATOR: &str = "\t";
 }
 
-pub struct SucessfulOperationConstants;
+pub struct SucessfulOperationStrings;
 
-impl SucessfulOperationConstants {
+impl SucessfulOperationStrings {
     pub fn sucessful_insert_operation(key: &str, value: &str) -> String {
         format!("Sucessfully set the key {} with the value {} in the database!", key, value)
     }
