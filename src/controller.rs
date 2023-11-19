@@ -7,7 +7,7 @@ use crate::{
     error_handler::ErrorHandler,
     failures::{CustomReisActionWarning, CustomReisIOFailure},
     reisbase::Reisbase,
-    sucess::CustomSucessOperation,
+    success::CustomSuccessOperation,
 };
 
 #[derive(Debug)]
@@ -42,7 +42,7 @@ impl Controller {
         }
     }
 
-    pub fn execute(&mut self) -> Result<CustomSucessOperation, CustomReisActionWarning> {
+    pub fn execute(&mut self) -> Result<CustomSuccessOperation, CustomReisActionWarning> {
         ReisbaseActions::execute(self)
     }
 }

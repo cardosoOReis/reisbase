@@ -10,7 +10,7 @@ pub mod failures;
 pub mod interface;
 pub mod operation;
 pub mod reisbase;
-pub mod sucess;
+pub mod success;
 pub mod terminal_communication;
 
 fn main() {

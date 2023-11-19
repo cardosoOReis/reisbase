@@ -79,6 +79,6 @@ pub enum CustomReisActionWarning {
 
 #[derive(Debug)]
 pub enum CustomFailureOperation {
-    Failure(CustomReisIOFailure),
+    Error(CustomReisIOFailure),
     Warning(CustomReisActionWarning),
 }

@@ -2,8 +2,8 @@ use arboard::Clipboard;
 use strum_macros::EnumIter;
 
 use crate::{
-    arguments::ReisbaseActionsArguments, constants::SucessfulOperationStrings,
-    controller::Controller, failures::CustomReisActionWarning, sucess::CustomSucessOperation,
+    arguments::ReisbaseActionsArguments, constants::SuccessfulOperationStrings,
+    controller::Controller, failures::CustomReisActionWarning, success::CustomSuccessOperation,
 };
 
 #[derive(Debug, EnumIter)]
@@ -37,7 +37,7 @@ pub enum ReisbaseActions {
 impl ReisbaseActions {
     pub fn execute(
         controller: &mut Controller,
-    ) -> Result<CustomSucessOperation, CustomReisActionWarning> {
+    ) -> Result<CustomSuccessOperation, CustomReisActionWarning> {
         match &controller.action {
             ReisbaseActions::Set {
                 key,
@@ -51,8 +51,8 @@ impl ReisbaseActions {
                 }),
                 None => {
                     controller.database.insert(key, new_value);
-                    Ok(CustomSucessOperation::SucessInsertOperation(
-                        SucessfulOperationStrings::sucessful_insert_operation(key, new_value),
+                    Ok(CustomSuccessOperation::SuccessInsertOperation(
+                        SuccessfulOperationStrings::successful_insert_operation(key, new_value),
                     ))
                 }
             },
@@ -63,7 +63,7 @@ impl ReisbaseActions {
                             let _ = clipboard.set_text(&value);
                         }
                     }
-                    Ok(CustomSucessOperation::SucessGetOperation(value))
+                    Ok(CustomSuccessOperation::SuccessGetOperation(value))
                 } else {
                     Err(CustomReisActionWarning::EntryDoesntExistsWarning {
                         key: key.to_string(),
@@ -83,16 +83,16 @@ impl ReisbaseActions {
                     })
                 } else {
                     controller.database.insert(key, value);
-                    Ok(CustomSucessOperation::SucessPutOperation(
-                        SucessfulOperationStrings::sucessful_insert_operation(key, value),
+                    Ok(CustomSuccessOperation::SuccessPutOperation(
+                        SuccessfulOperationStrings::successful_insert_operation(key, value),
                     ))
                 }
             }
             ReisbaseActions::Del { key, arguments: _ } => {
                 if controller.database.get(key).is_some() {
                     controller.database.delete(key);
-                    Ok(CustomSucessOperation::SucessDeleteOperation(
-                        SucessfulOperationStrings::sucessful_delete_operation(key),
+                    Ok(CustomSuccessOperation::SuccessDeleteOperation(
+                        SuccessfulOperationStrings::successful_delete_operation(key),
                     ))
                 } else {
                     Err(CustomReisActionWarning::EntryDoesntExistsWarning {
@@ -103,7 +103,7 @@ impl ReisbaseActions {
             }
             ReisbaseActions::GetAll { arguments: _ } => {
                 if let Some(values) = controller.database.get_all() {
-                    Ok(CustomSucessOperation::SucessGetAllOperation(values))
+                    Ok(CustomSuccessOperation::SuccessGetAllOperation(values))
                 } else {
                     Err(CustomReisActionWarning::EmptyDatabaseWarning)
                 }
@@ -114,8 +114,8 @@ impl ReisbaseActions {
                 }
                 if has_specified_argument(&ReisbaseActionsArguments::Force, arguments) {
                     controller.database.clear();
-                    Ok(CustomSucessOperation::SucessClearOperation(
-                        SucessfulOperationStrings::sucessful_clear_operation(),
+                    Ok(CustomSuccessOperation::SuccessClearOperation(
+                        SuccessfulOperationStrings::successful_clear_operation(),
                     ))
                 } else {
                     Err(CustomReisActionWarning::RequiredArgumentsNotSpecified {
@@ -128,31 +128,60 @@ impl ReisbaseActions {
         }
     }
 
-    pub fn name(&self) -> (&str, &str) {
-        match &self {
+    pub fn names(&self) -> &[&str] {
+        match self {
             ReisbaseActions::Set {
                 key: _,
                 value: _,
                 arguments: _,
-            } => ("s", "set"),
+            } => &["s", "set"],
             ReisbaseActions::Get {
                 key: _,
                 arguments: _,
-            } => ("g", "get"),
+            } => &["g", "get"],
             ReisbaseActions::Put {
                 key: _,
                 value: _,
                 arguments: _,
-            } => ("p", "put"),
+            } => &["p", "put"],
             ReisbaseActions::Del {
                 key: _,
                 arguments: _,
-            } => ("d", "del"),
-            ReisbaseActions::GetAll { arguments: _ } => ("ga", "getall"),
-            ReisbaseActions::Clear { arguments: _ } => ("c", "clr"),
+            } => &["d", "del"],
+            ReisbaseActions::GetAll { arguments: _ } => &["ga", "getall"],
+            ReisbaseActions::Clear { arguments: _ } => &["c", "clr"],
         }
     }
-    pub fn has_key(&self) -> bool {
+
+    pub fn has_same_name(&self, action: Option<&str>) -> bool {
+        action.map(|a| self.names().contains(&a)).unwrap_or(false)
+    }
+
+    /// Returns the result of calling `f` if this action has a key. Otherwise returns [`None`]
+    pub fn with_key<F>(&self, f: F) -> Option<String>
+    where
+        F: FnOnce() -> Option<String>,
+    {
+        if self.has_key() {
+            f()
+        } else {
+            None
+        }
+    }
+    
+    /// Returns the result of calling `f` if this action has a value. Otherwise returns [`None`]
+    pub fn with_value<F>(&self, f: F) -> Option<String>
+    where
+        F: FnOnce() -> Option<String>,
+    {
+        if self.has_value() {
+            f()
+        } else {
+            None
+        }
+    }
+
+    fn has_key(&self) -> bool {
         match self {
             ReisbaseActions::Set {
                 key: _,
@@ -176,7 +205,7 @@ impl ReisbaseActions {
             ReisbaseActions::Clear { arguments: _ } => false,
         }
     }
-    pub fn has_value(&self) -> bool {
+    fn has_value(&self) -> bool {
         match self {
             ReisbaseActions::Set {
                 key: _,

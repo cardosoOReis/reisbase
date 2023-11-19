@@ -8,20 +8,20 @@ impl DatabaseStringConstants {
     pub const ENTRIES_SEPARATOR: &str = "\t";
 }
 
-pub struct SucessfulOperationStrings;
+pub struct SuccessfulOperationStrings;
 
-impl SucessfulOperationStrings {
-    pub fn sucessful_insert_operation(key: &str, value: &str) -> String {
+impl SuccessfulOperationStrings {
+    pub fn successful_insert_operation(key: &str, value: &str) -> String {
         format!(
-            "Sucessfully set the key {} with the value {} in the database!",
+            "Successfully set the key {} with the value {} in the database!",
             key, value
         )
     }
-    pub fn sucessful_delete_operation(key: &str) -> String {
-        format!("Sucessfully deleted the entry for {}!", key)
+    pub fn successful_delete_operation(key: &str) -> String {
+        format!("Successfully deleted the entry for {}!", key)
     }
-    pub fn sucessful_clear_operation() -> String {
-        String::from("Sucessfully cleared all database values!")
+    pub fn successful_clear_operation() -> String {
+        String::from("Successfully cleared all database values!")
     }
 }
 

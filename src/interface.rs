@@ -5,7 +5,7 @@ use crate::{
     error_handler::ErrorHandler,
     failures::{CustomFailureOperation, CustomReisIOFailure},
     operation::Operation,
-    sucess::CustomSucessOperation,
+    success::CustomSuccessOperation,
 };
 
 #[derive(Debug)]
@@ -25,7 +25,7 @@ impl Interface {
 
     pub fn execute(
         operation: Option<Operation>,
-    ) -> Result<CustomSucessOperation, CustomFailureOperation> {
+    ) -> Result<CustomSuccessOperation, CustomFailureOperation> {
         operation
             .ok_or_else(build_empty_action_error)
             .and_then(create_interface_and_map_error)
@@ -41,11 +41,11 @@ fn create_interface_and_map_error(
         operation.value,
         operation.arguments,
     )
-    .map_err(CustomFailureOperation::Failure)
+    .map_err(CustomFailureOperation::Error)
 }
 
 fn build_empty_action_error() -> CustomFailureOperation {
-    CustomFailureOperation::Failure(ErrorHandler::handle_io_error(Error::new(
+    CustomFailureOperation::Error(ErrorHandler::handle_io_error(Error::new(
         ErrorKind::InvalidInput,
         "Operation should contain an action!",
     )))
@@ -53,7 +53,7 @@ fn build_empty_action_error() -> CustomFailureOperation {
 
 fn execute_action(
     mut interface: Interface,
-) -> Result<CustomSucessOperation, CustomFailureOperation> {
+) -> Result<CustomSuccessOperation, CustomFailureOperation> {
     interface
         .controller
         .execute()
