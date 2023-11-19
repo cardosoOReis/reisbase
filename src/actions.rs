@@ -2,8 +2,11 @@ use arboard::Clipboard;
 use strum_macros::EnumIter;
 
 use crate::{
-    arguments::ReisbaseActionsArguments, constants::SuccessfulOperationStrings,
-    controller::Controller, failures::CustomReisActionWarning, success::CustomSuccessOperation,
+    arguments::ReisbaseActionsArguments,
+    controller::Controller,
+    extensions::{PeekOption, ResultFromPredicate},
+    failures::CustomReisActionWarning,
+    success::CustomSuccessOperation,
 };
 
 #[derive(Debug, EnumIter)]
@@ -44,58 +47,44 @@ impl ReisbaseActions {
                 value: new_value,
                 arguments: _,
             } => match controller.database.get(key) {
-                Some(old_value) => Err(CustomReisActionWarning::EntryAlreadyExists {
-                    key: key.to_string(),
-                    old_value,
-                    new_value: new_value.to_string(),
-                }),
+                Some(ref old_value) => Err(CustomReisActionWarning::entry_already_exists(
+                    key, old_value, new_value,
+                )),
                 None => {
                     controller.database.insert(key, new_value);
-                    Ok(CustomSuccessOperation::Insert(
-                        SuccessfulOperationStrings::successful_insert_operation(key, new_value),
-                    ))
+                    Ok(CustomSuccessOperation::insert(key, new_value))
                 }
             },
-            ReisbaseActions::Get { key, arguments } => {
-                if let Some(value) = controller.database.get(key) {
+            ReisbaseActions::Get { key, arguments } => controller
+                .database
+                .get(key)
+                .peek(|value| {
                     if arguments.contains(&ReisbaseActionsArguments::Clipboard) {
-                        if let Ok(mut clipboard) = Clipboard::new() {
-                            let _ = clipboard.set_text(&value);
-                        }
+                        text_to_clipboard(value);
                     }
-                    Ok(CustomSuccessOperation::Get(value))
-                } else {
-                    Err(CustomReisActionWarning::EntryDoesntExists {
-                        key: key.to_string(),
-                        value: None,
-                    })
-                }
-            }
+                })
+                .map(CustomSuccessOperation::Get)
+                .ok_or_else(|| CustomReisActionWarning::entry_doesnt_exists(key, None)),
             ReisbaseActions::Put {
                 key,
                 value,
                 arguments: _,
-            } => {
-                if controller.database.get(key).is_none() {
-                    Err(CustomReisActionWarning::EntryDoesntExists {
-                        key: key.to_string(),
-                        value: Some(value.to_string()),
-                    })
-                } else {
+            } => Result::from_predicate(
+                controller.database.exists(key),
+                || {
                     controller.database.insert(key, value);
-                    Ok(CustomSuccessOperation::Put(
-                        SuccessfulOperationStrings::successful_insert_operation(key, value),
-                    ))
-                }
-            }
-            ReisbaseActions::Del { key, arguments: _ } => controller
-                .database
-                .get(key)
-                .map(|ref key| {
+                    CustomSuccessOperation::put(key, value)
+                },
+                || CustomReisActionWarning::entry_doesnt_exists(key, Some(value)),
+            ),
+            ReisbaseActions::Del { key, arguments: _ } => Result::from_predicate(
+                controller.database.exists(key),
+                || {
                     controller.database.delete(key);
                     CustomSuccessOperation::delete(key)
-                })
-                .ok_or_else(|| CustomReisActionWarning::entry_doesnt_exists(key, None)),
+                },
+                || CustomReisActionWarning::entry_doesnt_exists(key, None),
+            ),
             ReisbaseActions::GetAll { arguments: _ } => controller
                 .database
                 .get_all()
@@ -105,18 +94,14 @@ impl ReisbaseActions {
                 if controller.database.is_empty() {
                     return Err(CustomReisActionWarning::EmptyDatabase);
                 }
-                if arguments.contains(&ReisbaseActionsArguments::Force) {
-                    controller.database.clear();
-                    Ok(CustomSuccessOperation::Clear(
-                        SuccessfulOperationStrings::successful_clear_operation(),
-                    ))
-                } else {
-                    Err(CustomReisActionWarning::RequiredArgumentsNotSpecified {
-                        operation: ReisbaseActions::Clear {
-                            arguments: vec![ReisbaseActionsArguments::Force],
-                        },
-                    })
-                }
+                Result::from_predicate(
+                    arguments.contains(&ReisbaseActionsArguments::Force),
+                    || {
+                        controller.database.clear();
+                        CustomSuccessOperation::clear()
+                    },
+                    CustomReisActionWarning::clear_without_force,
+                )
             }
         }
     }
@@ -221,5 +206,11 @@ impl ReisbaseActions {
             ReisbaseActions::GetAll { arguments: _ } => false,
             ReisbaseActions::Clear { arguments: _ } => false,
         }
+    }
+}
+
+fn text_to_clipboard(value: &str) {
+    if let Ok(mut clipboard) = Clipboard::new() {
+        let _ = clipboard.set_text(value);
     }
 }

@@ -60,6 +60,10 @@ impl Reisbase {
         self.entries.clear()
     }
 
+    pub fn exists(&self, key: &str) -> bool {
+        self.entries.contains_key(key)
+    }
+
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }

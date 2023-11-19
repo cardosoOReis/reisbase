@@ -1,6 +1,6 @@
 use std::io::Error;
 
-use crate::actions::ReisbaseActions;
+use crate::{actions::ReisbaseActions, arguments::ReisbaseActionsArguments};
 
 #[derive(Debug)]
 pub enum CustomReisIOFailure {
@@ -78,10 +78,28 @@ pub enum CustomReisActionWarning {
 }
 
 impl CustomReisActionWarning {
+    pub fn entry_already_exists(
+        key: &str,
+        old_value: &str,
+        new_value: &str,
+    ) -> CustomReisActionWarning {
+        CustomReisActionWarning::EntryAlreadyExists {
+            key: String::from(key),
+            old_value: String::from(old_value),
+            new_value: String::from(new_value),
+        }
+    }
     pub fn entry_doesnt_exists(key: &str, value: Option<&str>) -> CustomReisActionWarning {
         Self::EntryDoesntExists {
             key: String::from(key),
             value: value.map(String::from),
+        }
+    }
+    pub fn clear_without_force() -> CustomReisActionWarning {
+        Self::RequiredArgumentsNotSpecified {
+            operation: ReisbaseActions::Clear {
+                arguments: vec![ReisbaseActionsArguments::Force],
+            },
         }
     }
 }
