@@ -62,19 +62,28 @@ impl CustomErrorMessage {
 
 #[derive(Debug)]
 pub enum CustomReisActionWarning {
-    EmptyDatabaseWarning,
-    EntryAlreadyExistsWarning {
+    EmptyDatabase,
+    EntryAlreadyExists {
         key: String,
         old_value: String,
         new_value: String,
     },
-    EntryDoesntExistsWarning {
+    EntryDoesntExists {
         key: String,
         value: Option<String>,
     },
     RequiredArgumentsNotSpecified {
         operation: ReisbaseActions,
     },
+}
+
+impl CustomReisActionWarning {
+    pub fn entry_doesnt_exists(key: &str, value: Option<&str>) -> CustomReisActionWarning {
+        Self::EntryDoesntExists {
+            key: String::from(key),
+            value: value.map(String::from),
+        }
+    }
 }
 
 #[derive(Debug)]

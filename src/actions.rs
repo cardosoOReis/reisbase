@@ -44,28 +44,28 @@ impl ReisbaseActions {
                 value: new_value,
                 arguments: _,
             } => match controller.database.get(key) {
-                Some(old_value) => Err(CustomReisActionWarning::EntryAlreadyExistsWarning {
+                Some(old_value) => Err(CustomReisActionWarning::EntryAlreadyExists {
                     key: key.to_string(),
                     old_value,
                     new_value: new_value.to_string(),
                 }),
                 None => {
                     controller.database.insert(key, new_value);
-                    Ok(CustomSuccessOperation::SuccessInsertOperation(
+                    Ok(CustomSuccessOperation::Insert(
                         SuccessfulOperationStrings::successful_insert_operation(key, new_value),
                     ))
                 }
             },
             ReisbaseActions::Get { key, arguments } => {
                 if let Some(value) = controller.database.get(key) {
-                    if has_specified_argument(&ReisbaseActionsArguments::Clipboard, arguments) {
+                    if arguments.contains(&ReisbaseActionsArguments::Clipboard) {
                         if let Ok(mut clipboard) = Clipboard::new() {
                             let _ = clipboard.set_text(&value);
                         }
                     }
-                    Ok(CustomSuccessOperation::SuccessGetOperation(value))
+                    Ok(CustomSuccessOperation::Get(value))
                 } else {
-                    Err(CustomReisActionWarning::EntryDoesntExistsWarning {
+                    Err(CustomReisActionWarning::EntryDoesntExists {
                         key: key.to_string(),
                         value: None,
                     })
@@ -77,44 +77,37 @@ impl ReisbaseActions {
                 arguments: _,
             } => {
                 if controller.database.get(key).is_none() {
-                    Err(CustomReisActionWarning::EntryDoesntExistsWarning {
+                    Err(CustomReisActionWarning::EntryDoesntExists {
                         key: key.to_string(),
                         value: Some(value.to_string()),
                     })
                 } else {
                     controller.database.insert(key, value);
-                    Ok(CustomSuccessOperation::SuccessPutOperation(
+                    Ok(CustomSuccessOperation::Put(
                         SuccessfulOperationStrings::successful_insert_operation(key, value),
                     ))
                 }
             }
-            ReisbaseActions::Del { key, arguments: _ } => {
-                if controller.database.get(key).is_some() {
+            ReisbaseActions::Del { key, arguments: _ } => controller
+                .database
+                .get(key)
+                .map(|ref key| {
                     controller.database.delete(key);
-                    Ok(CustomSuccessOperation::SuccessDeleteOperation(
-                        SuccessfulOperationStrings::successful_delete_operation(key),
-                    ))
-                } else {
-                    Err(CustomReisActionWarning::EntryDoesntExistsWarning {
-                        key: key.to_string(),
-                        value: None,
-                    })
-                }
-            }
-            ReisbaseActions::GetAll { arguments: _ } => {
-                if let Some(values) = controller.database.get_all() {
-                    Ok(CustomSuccessOperation::SuccessGetAllOperation(values))
-                } else {
-                    Err(CustomReisActionWarning::EmptyDatabaseWarning)
-                }
-            }
+                    CustomSuccessOperation::delete(key)
+                })
+                .ok_or_else(|| CustomReisActionWarning::entry_doesnt_exists(key, None)),
+            ReisbaseActions::GetAll { arguments: _ } => controller
+                .database
+                .get_all()
+                .map(CustomSuccessOperation::GetAll)
+                .ok_or(CustomReisActionWarning::EmptyDatabase),
             ReisbaseActions::Clear { arguments } => {
                 if controller.database.is_empty() {
-                    return Err(CustomReisActionWarning::EmptyDatabaseWarning);
+                    return Err(CustomReisActionWarning::EmptyDatabase);
                 }
-                if has_specified_argument(&ReisbaseActionsArguments::Force, arguments) {
+                if arguments.contains(&ReisbaseActionsArguments::Force) {
                     controller.database.clear();
-                    Ok(CustomSuccessOperation::SuccessClearOperation(
+                    Ok(CustomSuccessOperation::Clear(
                         SuccessfulOperationStrings::successful_clear_operation(),
                     ))
                 } else {
@@ -168,7 +161,7 @@ impl ReisbaseActions {
             None
         }
     }
-    
+
     /// Returns the result of calling `f` if this action has a value. Otherwise returns [`None`]
     pub fn with_value<F>(&self, f: F) -> Option<String>
     where
@@ -229,13 +222,4 @@ impl ReisbaseActions {
             ReisbaseActions::Clear { arguments: _ } => false,
         }
     }
-}
-
-fn has_specified_argument(
-    specified_argument: &ReisbaseActionsArguments,
-    arguments: &[ReisbaseActionsArguments],
-) -> bool {
-    arguments
-        .iter()
-        .any(|argument| argument == specified_argument)
 }

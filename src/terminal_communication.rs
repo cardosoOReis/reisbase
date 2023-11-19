@@ -3,11 +3,10 @@ use std::io;
 use strum::IntoEnumIterator;
 
 use crate::actions::ReisbaseActions;
-use crate::constants::the_entry_does_not_exists;
-use crate::constants::the_key_already_exists;
-use crate::constants::CANCELED_OPERATION;
-use crate::constants::EMPTY_DATABASE;
-use crate::constants::THIS_ACTION_IS_PERMANENT;
+use crate::constants::{
+    the_entry_does_not_exists, the_key_already_exists, CANCELED_OPERATION, EMPTY_DATABASE,
+    THIS_ACTION_IS_PERMANENT,
+};
 use crate::operation::Operation;
 use crate::{
     failures::{CustomFailureOperation, CustomReisActionWarning, CustomReisIOFailure},
@@ -52,10 +51,10 @@ fn handle_error_operation(error: &CustomReisIOFailure) {
 
 fn handle_warning_operation(warning: &CustomReisActionWarning) {
     match warning {
-        CustomReisActionWarning::EmptyDatabaseWarning => {
+        CustomReisActionWarning::EmptyDatabase => {
             println!("{}", EMPTY_DATABASE)
         }
-        CustomReisActionWarning::EntryAlreadyExistsWarning {
+        CustomReisActionWarning::EntryAlreadyExists {
             key,
             old_value,
             new_value,
@@ -64,7 +63,7 @@ fn handle_warning_operation(warning: &CustomReisActionWarning) {
                 retry_put(key, new_value);
             });
         }
-        CustomReisActionWarning::EntryDoesntExistsWarning { key, value } => {
+        CustomReisActionWarning::EntryDoesntExists { key, value } => {
             let value = value.as_deref().unwrap_or("value");
             println!("{}", the_entry_does_not_exists(key, value));
         }
