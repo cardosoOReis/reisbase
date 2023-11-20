@@ -89,7 +89,7 @@ fn db_file_to_entries(contents: String) -> Result<Reisbase, CustomReisIOFailure>
     let entries_iter = contents
         .lines()
         .filter_map(|line| line.split_once(DatabaseStringConstants::ENTRIES_SEPARATOR))
-        .map(|(key, value)| (key.to_owned(), value.to_owned()))
+        .map(|(key, value)| (remove_key_identifier(key), value.to_owned()))
         .collect::<Vec<(String, String)>>();
 
     let entries = HashMap::from_iter(entries_iter);
@@ -104,6 +104,10 @@ fn format_entry(key: &str, value: &str) -> String {
         DatabaseStringConstants::ENTRIES_SEPARATOR,
         value
     )
+}
+
+fn remove_key_identifier(key: &str) -> String {
+    key.replacen(DatabaseStringConstants::KEY_IDENTIFIER, "", 1)
 }
 
 fn string_to_option(value: String) -> Option<String> {

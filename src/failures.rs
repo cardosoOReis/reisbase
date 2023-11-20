@@ -1,35 +1,58 @@
 use std::io::Error;
 
-use crate::{actions::ReisbaseActions, arguments::ReisbaseActionsArguments};
+use crate::{actions::ReisbaseAction, arguments::ReisbaseActionsArguments};
 
 #[derive(Debug)]
 pub enum CustomReisIOFailure {
-    CorruptedDatabaseFailure(CustomErrorMessage),
-    DatabaseNotFoundFailure(CustomErrorMessage),
-    DatabaseTooLargeError(CustomErrorMessage),
-    DefaultReisFailure(CustomErrorMessage),
-    InvalidDatabaseNameFailure(CustomErrorMessage),
-    InvalidInputFailure(CustomErrorMessage),
-    InvalidPlatformOperationFailure(CustomErrorMessage),
+    CorruptedDatabase(CustomErrorMessage),
+    DatabaseNotFound(CustomErrorMessage),
+    DatabaseTooLarge(CustomErrorMessage),
+    Default(CustomErrorMessage),
+    InvalidActionArguments(CustomErrorMessage),
+    InvalidDatabaseName(CustomErrorMessage),
+    InvalidInput(CustomErrorMessage),
+    InvalidPlatformOperation(CustomErrorMessage),
     PermissionDeniedForDatabase(CustomErrorMessage),
-    OutOfSpaceFailure(CustomErrorMessage),
-    UnknownOperationFailure(CustomErrorMessage),
+    OutOfSpace(CustomErrorMessage),
+    UnknownActionRequest(CustomErrorMessage),
 }
 
 impl CustomReisIOFailure {
     pub fn error_message(&self) -> &CustomErrorMessage {
         match self {
-            CustomReisIOFailure::CorruptedDatabaseFailure(error_message)
-            | CustomReisIOFailure::DatabaseNotFoundFailure(error_message)
-            | CustomReisIOFailure::DatabaseTooLargeError(error_message)
-            | CustomReisIOFailure::DefaultReisFailure(error_message)
-            | CustomReisIOFailure::InvalidDatabaseNameFailure(error_message)
-            | CustomReisIOFailure::InvalidInputFailure(error_message)
-            | CustomReisIOFailure::InvalidPlatformOperationFailure(error_message)
+            CustomReisIOFailure::CorruptedDatabase(error_message)
+            | CustomReisIOFailure::DatabaseNotFound(error_message)
+            | CustomReisIOFailure::DatabaseTooLarge(error_message)
+            | CustomReisIOFailure::Default(error_message)
+            | CustomReisIOFailure::InvalidDatabaseName(error_message)
+            | CustomReisIOFailure::InvalidInput(error_message)
+            | CustomReisIOFailure::InvalidPlatformOperation(error_message)
             | CustomReisIOFailure::PermissionDeniedForDatabase(error_message)
-            | CustomReisIOFailure::OutOfSpaceFailure(error_message)
-            | CustomReisIOFailure::UnknownOperationFailure(error_message) => error_message,
+            | CustomReisIOFailure::OutOfSpace(error_message)
+            | CustomReisIOFailure::InvalidActionArguments(error_message)
+            | CustomReisIOFailure::UnknownActionRequest(error_message) => error_message,
         }
+    }
+
+    pub fn invalid_action_arguments(action_name: &str) -> CustomReisIOFailure {
+        let message = format!(
+            "Invalid arguments were passed for the {} action!",
+            action_name
+        );
+        CustomReisIOFailure::InvalidActionArguments(CustomErrorMessage {
+            message,
+            error: Error::new(std::io::ErrorKind::InvalidInput, "See message"),
+        })
+    }
+
+    pub fn unknown_action_requested(action: &str) -> CustomReisIOFailure {
+        CustomReisIOFailure::UnknownActionRequest(CustomErrorMessage {
+            message: format!(
+                "The argument {} is not recongnized as a real action.",
+                action
+            ),
+            error: Error::new(std::io::ErrorKind::InvalidInput, action),
+        })
     }
 }
 
@@ -73,7 +96,7 @@ pub enum CustomReisActionWarning {
         value: Option<String>,
     },
     RequiredArgumentsNotSpecified {
-        operation: ReisbaseActions,
+        operation: ReisbaseAction,
     },
 }
 
@@ -97,7 +120,7 @@ impl CustomReisActionWarning {
     }
     pub fn clear_without_force() -> CustomReisActionWarning {
         Self::RequiredArgumentsNotSpecified {
-            operation: ReisbaseActions::Clear {
+            operation: ReisbaseAction::Clear {
                 arguments: vec![ReisbaseActionsArguments::Force],
             },
         }

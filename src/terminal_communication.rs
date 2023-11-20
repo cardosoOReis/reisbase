@@ -2,7 +2,7 @@ use std::env;
 use std::io;
 use strum::IntoEnumIterator;
 
-use crate::actions::ReisbaseActions;
+use crate::actions::ReisbaseAction;
 use crate::constants::{
     the_entry_does_not_exists, the_key_already_exists, CANCELED_OPERATION, EMPTY_DATABASE,
     THIS_ACTION_IS_PERMANENT,
@@ -68,7 +68,7 @@ fn handle_warning_operation(warning: &CustomReisActionWarning) {
             println!("{}", the_entry_does_not_exists(key, value));
         }
         CustomReisActionWarning::RequiredArgumentsNotSpecified { operation } => {
-            if let ReisbaseActions::Clear { arguments: _ } = operation {
+            if let ReisbaseAction::Clear { arguments: _ } = operation {
                 retry(THIS_ACTION_IS_PERMANENT, retry_clear);
             }
         }
@@ -111,13 +111,18 @@ fn user_input_to_bool(input: &str) -> bool {
 fn get_requested_operation() -> Option<Operation> {
     let mut args = env::args().skip(1);
     let action = args.next();
-    ReisbaseActions::iter()
-        .find(|reisbase_action| reisbase_action.has_same_name(action.as_deref()))
+    ReisbaseAction::iter()
+        .find(|reisbase_action| {
+            action
+                .as_ref()
+                .map(|ac| reisbase_action.has_same_name(ac))
+                .unwrap_or(false)
+        })
         .and_then(|reisbase_action| parse_action(&reisbase_action, action.as_deref(), args))
 }
 
 fn parse_action(
-    reisbase_action: &ReisbaseActions,
+    reisbase_action: &ReisbaseAction,
     action: Option<&str>,
     mut args: impl Iterator<Item = String>,
 ) -> Option<Operation> {

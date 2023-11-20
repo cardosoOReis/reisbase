@@ -9,7 +9,7 @@ impl ErrorHandler {
     pub fn handle_io_error(error: std::io::Error) -> CustomReisIOFailure {
         match error.kind() {
             ErrorKind::InvalidData => {
-                CustomReisIOFailure::CorruptedDatabaseFailure(CustomErrorMessage::new(
+                CustomReisIOFailure::CorruptedDatabase(CustomErrorMessage::new(
                     String::from(
                         "Invalid data was read from your database! It seems it may be corrupt, or an invalid value was written to it externally!"
                     ),
@@ -17,7 +17,7 @@ impl ErrorHandler {
                 ))
             },
             ErrorKind::InvalidInput => {
-                CustomReisIOFailure::InvalidInputFailure(CustomErrorMessage::new(
+                CustomReisIOFailure::InvalidInput(CustomErrorMessage::new(
                     String::from(
                         "Invalid parameters were passed to the operation!"
                     ),
@@ -25,7 +25,7 @@ impl ErrorHandler {
                 ))
             },
             ErrorKind::NotFound => {
-                CustomReisIOFailure::DatabaseNotFoundFailure(CustomErrorMessage::new(
+                CustomReisIOFailure::DatabaseNotFound(CustomErrorMessage::new(
                     String::from(
                         "Database has not been created or database could not have been found!",
                     ),
@@ -41,7 +41,7 @@ impl ErrorHandler {
                 ))
             }
             ErrorKind::Unsupported => {
-                CustomReisIOFailure::InvalidPlatformOperationFailure(CustomErrorMessage::new(
+                CustomReisIOFailure::InvalidPlatformOperation(CustomErrorMessage::new(
                     String::from(
                         "An operation ocurred which is invalid in this platform!"
                     ),
@@ -72,7 +72,7 @@ impl ErrorHandler {
             //         error
             //     ))
             // },
-            _ => CustomReisIOFailure::DefaultReisFailure(CustomErrorMessage::new(
+            _ => CustomReisIOFailure::Default(CustomErrorMessage::new(
                 String::from(
                     "An unexpected error ocurred! Please report this error to Rafinha!"
                 ),
